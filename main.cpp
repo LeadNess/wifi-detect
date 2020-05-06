@@ -14,16 +14,17 @@
 #include <ctime>
 #include <string>
 #include <iostream>
+#include <fstream>
 
+using std::ofstream;
 using std::string;
 using std::cout;
 using std::cerr;
 using std::cin;
 using std::endl;
 
-#define PCKT_LEN 4096
 
-typedef struct pcap_hdr_t {
+struct PcapHeader {
     uint32_t magic_number;
     uint16_t version_major;
     uint16_t version_minor;
@@ -31,80 +32,46 @@ typedef struct pcap_hdr_t {
     uint32_t sigfigs;
     uint32_t snaplen;
     uint32_t network;
-} ;
+};
 
-typedef struct pcaprec_hdr_s {
+struct PcapRecHeader {
     uint32_t ts_sec;
     uint32_t ts_usec;
     uint32_t incl_len;
     uint32_t orig_len;
-} pcaprec_hdr_t;
+};
 
-int FileDump(FILE *fd, int sock) {
-    pcap_hdr_t file_header = { 0xa1b2c3d4, //magicnumber
-                               2,4,
-                               0,
-                               0,
-                               65535,
-                               127  //Radiotap
+int writePcapFile(ofstream *fout, int sock) {
+    PcapHeader fileHeader = {0xa1b2c3d4,
+                             2,
+                             4,
+                             0,
+                             0,
+                             65535,
+                             127
     };
-
+    fout->write(reinterpret_cast<const char *>(&fileHeader), sizeof(PcapHeader));
     char buff[4096];
-
-    if (fd == nullptr) {
-        perror("File open error:");
-        return -1;
-    }
-
-    auto faildump = fwrite(&file_header, sizeof(pcap_hdr_t), 1, fd);
-
-    if (faildump<= 0) {
-        perror("File write error:");
-        fclose(fd);
-        return -1;
-    }
-
-    int count = 0;
-
-    while (count < 100) {
-        auto size = recv(sock, (void*)buff, sizeof(buff) - 1, 0);
+    for(;;) {
+        int size = recv(sock, (void*)buff, sizeof(buff) - 1, 0);
         if (size == -1) {
-            perror("recv error:");
-            fclose(fd);
+            cerr << "Error on recv" << endl;
+            fout->close();
             return -1;
         }
+        timeval timeVal{};
+        struct timeone timeOne = {0, 0};
 
-        struct timeval time1;
-        struct timezone tv2 = {	0, 0 };
-
-        gettimeofday(&time1, &tv2);
-        pcaprec_hdr_t packet_header = {
-                (uint32_t)time1.tv_sec,
-                (uint32_t)time1.tv_usec,
+        gettimeofday(&timeVal, &timeOne);
+        PcapRecHeader packetHeader = {
+                (uint32_t)timeVal.tv_sec,
+                (uint32_t)timeVal.tv_usec,
                 (uint32_t)size,
                 (uint32_t)size
         };
-
-        faildump = fwrite(&packet_header, sizeof(pcaprec_hdr_t), 1, fd);
-
-        if (faildump<= 0) {
-            perror("File write error:");
-            fclose(fd);
-            return -1;
-        }
-
-        faildump = fwrite(&buff, size, 1, fd);
-
-        if (faildump<= 0) {
-            perror("File write error:");
-            fclose(fd);
-            return -1;
-        }
-
-        count++;
+        fout->write(reinterpret_cast<const char *>(&packetHeader), sizeof(PcapRecHeader));
+        fout->write(reinterpret_cast<const char *>(&buff), size);
     }
-    fclose(fd);
-
 }
 
 
@@ -150,7 +117,7 @@ int main(int argc, char* argv[]) {
     }
 
 
-    sockaddr_ll sll;
+    sockaddr_ll sll{};
     memset(&sll, 0, sizeof(sll));
     memset(&ifr, 0, sizeof(ifr));
     sll.sll_family = AF_PACKET;
@@ -163,9 +130,14 @@ int main(int argc, char* argv[]) {
     }
 
     string pcapFileName = "capture.pcap";
-    FILE *fd = fopen(fname, "w");
+    ofstream fout(pcapFileName);
+    if (!fout.is_open()) {
+        cerr << "Error on opening file: " << pcapFileName << endl;
+        return -1;
+    }
 
-    FileDump(fd, sock);
+    writePcapFile(&fout, sock);
     close(sock);
+    fout.close();
     return 0;
 }
