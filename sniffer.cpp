@@ -1,5 +1,16 @@
 #include <thread>
+#include <iomanip>
 #include "sniffer.h"
+
+void printMAC(std::array<uint8_t, 6> mac) {
+    cout << std::hex << std::setw(2) << std::setfill('0')
+         << int(mac[0]) << ":"
+         << int(mac[1]) << ":"
+         << int(mac[2]) << ":"
+         << int(mac[3]) << ":"
+         << int(mac[4]) << ":"
+         << int(mac[5]);
+}
 
 
 int writePcapFile(ofstream *fOut, int sock) {
@@ -16,7 +27,7 @@ int writePcapFile(ofstream *fOut, int sock) {
 
     std::map<BSSID, set<MAC>> mapTable;
 
-    for(;;) {
+    for(int i = 0;i < 100; i++) {
         int size = recv(sock, (void*)buff, sizeof(buff) - 1, 0);
         if (size == -1) {
             cerr << "Error on recv" << endl;
@@ -184,5 +195,16 @@ int writePcapFile(ofstream *fOut, int sock) {
                 }
             }
         }
+    }
+    for (auto &[bssid, setMAC]: mapTable) {
+        cout << "BSSID: ";
+        printMAC(bssid);
+        cout << endl;
+        for (auto MAC: setMAC) {
+            cout << "  MAC: ";
+            printMAC(MAC);
+            cout << endl;
+        }
+        cout << endl;
     }
 }
