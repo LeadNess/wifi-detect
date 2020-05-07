@@ -6,13 +6,21 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <array>
+#include <map>
+#include <set>
 
 using std::ofstream;
 using std::string;
+using std::pair;
+using std::set;
 using std::cout;
 using std::cerr;
 using std::cin;
 using std::endl;
+
+using BSSID = std::array<uint8_t, 6>;
+using MAC = std::array<uint8_t, 6>;
 
 struct PcapHeader {
     uint32_t magic_number;
@@ -31,5 +39,11 @@ struct PcapRecHeader {
     uint32_t orig_len;
 };
 
-int writePcapFile(ofstream *fOut, int sock);
+struct RadtapHeader {
+    uint16_t useless;
+    uint16_t length;
+};
 
+
+
+int writePcapFile(ofstream *fOut, int sock);
