@@ -3,4 +3,4 @@ project(WifiSniffer)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(WifiSniffer main.cpp)
+add_executable(WifiSniffer main.cpp sniffer.cpp sniffer.h)
