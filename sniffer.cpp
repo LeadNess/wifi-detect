@@ -2,16 +2,6 @@
 #include <iomanip>
 #include "sniffer.h"
 
-void printMAC(std::array<uint8_t, 6> mac) {
-    cout << std::hex << std::setw(2) << std::setfill('0')
-         << int(mac[0]) << ":"
-         << int(mac[1]) << ":"
-         << int(mac[2]) << ":"
-         << int(mac[3]) << ":"
-         << int(mac[4]) << ":"
-         << int(mac[5]);
-}
-
 
 int writePcapFile(ofstream *fOut, int sock) {
     PcapHeader fileHeader = {0xa1b2c3d4,
@@ -48,11 +38,9 @@ int writePcapFile(ofstream *fOut, int sock) {
         fOut->write(reinterpret_cast<const char *>(&buff), size);
 
         auto packet = (PcapRecHeader*)buff;
-        cout << "Len = "<< packet->incl_len;
         auto rtpHdr = (RadtapHeader*)buff;
         int rtpLen = rtpHdr->length;
         uint8_t type = buff[rtpLen];
-        cout << ", radtap type = " << type << ", radtap len = " << rtpLen << endl;
         bool assResponse = false;
         bool managmentFrame = false;
 
@@ -76,8 +64,6 @@ int writePcapFile(ofstream *fOut, int sock) {
             uint8_t flags = buff[rtpLen + 1];
             int tods = (int)(flags & 1);
             int fromds = (int)((flags & (1 << 1)) >> 1);
-            cout << "tods = "<< tods << endl;
-            cout << "fromds = "<< fromds << endl;
 
             MAC addr1;
             MAC addr2;
@@ -196,6 +182,16 @@ int writePcapFile(ofstream *fOut, int sock) {
             }
         }
     }
+
+    auto printMAC = [&](std::array<uint8_t, 6> mac)-> void {
+        cout << std::hex << std::setw(2) << std::setfill('0')
+             << int(mac[0]) << ":"
+             << int(mac[1]) << ":"
+             << int(mac[2]) << ":"
+             << int(mac[3]) << ":"
+             << int(mac[4]) << ":"
+             << int(mac[5]);
+    };
     for (auto &[bssid, setMAC]: mapTable) {
         cout << "BSSID: ";
         printMAC(bssid);
